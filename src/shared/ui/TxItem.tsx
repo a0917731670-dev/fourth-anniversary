@@ -9,6 +9,7 @@ const KIND_ICON: Record<TxKind, IconName> = {
   topup: 'wallet',
   anniv: 'sparkle',
   gift: 'gift',
+  redeem: 'gift',
   void: 'undo',
 }
 
