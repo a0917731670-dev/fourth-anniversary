@@ -54,6 +54,12 @@ export interface VoidInput {
   reason: string
 }
 
+export interface RedeemInput {
+  voucherKey: string
+  /** 由前端產生；同一個 requestId 重送只會扣一次 */
+  requestId: string
+}
+
 /** 她那一邊可以呼叫的功能（對應資料庫函式） */
 export interface CardApi {
   getState(): Promise<CardState>
@@ -61,6 +67,8 @@ export interface CardApi {
   spend(input: SpendInput): Promise<CardState>
   /** 兌換禮物：不扣額度，每項限一次 */
   claimGift(giftKey: string): Promise<CardState>
+  /** 兌換券：扣點；限一次的券已兌換（且沒被沖銷）就不能再兌換 */
+  redeem(input: RedeemInput): Promise<CardState>
   setLock(locked: boolean): Promise<CardState>
   updateProfile(patch: Partial<Profile>): Promise<CardState>
 }
