@@ -2,11 +2,13 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { createCardApi, WATCH_KEY, type SpendInput } from '../shared/api'
 import type { Profile } from '../shared/domain/types'
 import { loaded, useLedger, type Ledger, type LoadedLedger } from '../shared/hooks/useLedger'
+import type { RedeemInput } from '../shared/api/types'
 
 interface CardActions {
   activate: (profile: Profile) => Promise<void>
   spend: (input: SpendInput) => Promise<void>
   claimGift: (giftKey: string) => Promise<void>
+    redeem: (input: RedeemInput) => Promise<void>
   setLock: (locked: boolean) => Promise<void>
   updateProfile: (patch: Partial<Profile>) => Promise<void>
 }
@@ -29,6 +31,7 @@ export function CardDataProvider({ children }: { children: ReactNode }) {
       activate: async (profile) => apply(await api.activate(profile)),
       spend: async (input) => apply(await api.spend(input)),
       claimGift: async (giftKey) => apply(await api.claimGift(giftKey)),
+            redeem: async (input) => apply(await api.redeem(input)),
       setLock: async (locked) => apply(await api.setLock(locked)),
       updateProfile: async (patch) => apply(await api.updateProfile(patch)),
     }),
