@@ -77,8 +77,15 @@ const noToken = async (): Promise<never> => {
 
 export function createSupabaseCardApi(token: string | null, config: SupabaseConfig): CardApi {
   if (!token) {
-    return { getState: noToken, activate: noToken, spend: noToken, claimGift: noToken, setLock: noToken, updateProfile: noToken }
-  }
+       return {
+      getState: noToken,
+      activate: noToken,
+      spend: noToken,
+      claimGift: noToken,
+      redeem: noToken,
+      setLock: noToken,
+      updateProfile: noToken,
+    }
   const rpc = createRpc(config)
   return {
     getState: () => rpc('card_state', { p_token: token }),
@@ -86,6 +93,8 @@ export function createSupabaseCardApi(token: string | null, config: SupabaseConf
     spend: ({ title, amount, requestId }) =>
       rpc('card_spend', { p_token: token, p_title: title, p_amount: amount, p_request_id: requestId }),
     claimGift: (giftKey) => rpc('card_claim_gift', { p_token: token, p_gift_key: giftKey }),
+        redeem: ({ voucherKey, requestId }) =>
+      rpc('card_redeem', { p_token: token, p_voucher_key: voucherKey, p_request_id: requestId }),
     setLock: (locked) => rpc('card_set_lock', { p_token: token, p_locked: locked }),
     updateProfile: (patch) => rpc('card_update_profile', { p_token: token, p_patch: patch }),
   }
