@@ -1,5 +1,5 @@
 import { diffDays, taipei, taipeiMidnight } from './clock'
-import { AMOUNT_MAX, ANNIVERSARY, GIFTS, TITLE_MAX, TOPUP_MAX } from './config'
+import { AMOUNT_MAX, ANNIVERSARY, GIFTS, TITLE_MAX, TOPUP_MAX, VOUCHERS } from './config'
 import type { Stats, Tx, TxKind, TxRow } from './types'
 
 /**
@@ -10,7 +10,7 @@ import type { Stats, Tx, TxKind, TxRow } from './types'
 const isCredit = (k: TxKind): boolean => k === 'initial' || k === 'topup' || k === 'anniv'
 
 /** 可以被後台沖銷的種類（初始額度與沖銷本身不行） */
-export const isVoidable = (k: TxKind): boolean => k === 'spend' || k === 'topup' || k === 'anniv'
+export const isVoidable = (k: TxKind): boolean => k === 'spend' || k === 'topup' || k === 'anniv' || k === 'redeem'
 
 export const balanceOf = (txs: readonly Tx[]): number => txs.reduce((s, t) => s + t.amount, 0)
 
@@ -122,6 +122,37 @@ export function checkGift(key: string, claimed: ReadonlySet<string>, locked: boo
   if (!GIFTS.some((g) => g.key === key)) return 'INVALID_INPUT'
   if (claimed.has(key)) return 'ALREADY_CLAIMED'
   if (locked) return 'LOCKED'
+  return null
+}
+
+// ───────── 兌換券（扣點） ─────────
+
+/** 目前有效的兌換（沒被沖銷）：券代碼 → 次數與最近一次的時間 */
+export function activeRedeems(txs: readonly Tx[]): Map<string, { count: number; lastAt: string }> {
+  const voided = voidedIds(txs)
+  const out = new Map<string, { count: number; lastAt: string }>()
+  for (const t of txs) {
+    if (t.kind !== 'redeem' || !t.ref || voided.has(t.id)) continue
+    const cur = out.get(t.ref)
+    out.set(t.ref, { count: (cur?.count ?? 0) + 1, lastAt: !cur || t.createdAt > cur.lastAt ? t.createdAt : cur.lastAt })
+  }
+  return out
+}
+
+export type RedeemError = 'INVALID_INPUT' | 'LOCKED' | 'ALREADY_CLAIMED' | 'INSUFFICIENT'
+
+/** 檢查順序與資料庫 card_redeem 一致：代碼 → 鎖定 → 限一次 → 餘額 */
+export function checkRedeem(
+  key: string,
+  balance: number,
+  active: ReadonlyMap<string, unknown>,
+  locked: boolean,
+): RedeemError | null {
+  const v = VOUCHERS.find((x) => x.key === key)
+  if (!v) return 'INVALID_INPUT'
+  if (locked) return 'LOCKED'
+  if (v.once && active.has(v.key)) return 'ALREADY_CLAIMED'
+  if (v.cost > balance) return 'INSUFFICIENT'
   return null
 }
 
