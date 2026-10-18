@@ -85,6 +85,18 @@ create unique index if not exists transactions_one_anniv   on app.transactions (
 create unique index if not exists transactions_one_gift    on app.transactions (ref)  where kind = 'gift';
 create unique index if not exists transactions_one_void    on app.transactions (ref)  where kind = 'void';
 
+-- 新增 redeem（兌換券）種類：重新建立兩個檢查條件
+alter table app.transactions drop constraint if exists transactions_kind_check;
+alter table app.transactions drop constraint if exists amount_matches_kind;
+alter table app.transactions add constraint transactions_kind_check
+  check (kind in ('initial', 'spend', 'topup', 'anniv', 'gift', 'void', 'redeem'));
+alter table app.transactions add constraint amount_matches_kind check (
+  (kind in ('initial', 'topup', 'anniv') and amount > 0)
+  or (kind in ('spend', 'redeem') and amount < 0)
+  or (kind = 'gift' and amount = 0)
+  or (kind = 'void' and amount <> 0)
+);
+
 -- 沒有任何人（包含擁有者的一般操作）可以修改或刪除流水帳；要清空請用 app.reset_card()
 create or replace function app.ledger_is_append_only() returns trigger
 language plpgsql as $$
