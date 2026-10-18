@@ -51,6 +51,28 @@ insert into app.gifts (key, title, sort) values
   ('anniv4-letter', '四週年手寫卡片', 2)
 on conflict do nothing;
 
+-- 兌換券：扣點。once = true 表示每項限兌換一次
+create table if not exists app.vouchers (
+  key text primary key,
+  title text not null,
+  cost int not null check (cost > 0),
+  once boolean not null default false,
+  sort int not null default 0
+);
+
+insert into app.vouchers (key, title, cost, once, sort) values
+  ('dessert',    '手工甜點券',     200,  false, 1),
+  ('massage',    '15分鐘按摩券',   200,  false, 2),
+  ('blowdry',    '吹頭髮服務券',   200,  false, 3),
+  ('shampoo',    '洗頭服務券',     200,  false, 4),
+  ('date',       '一日約會驚喜券', 1200, true,  5),
+  ('wish',       '願望兌換券',     2000, true,  6),
+  ('outfit',     '治裝券',         1200, true,  7),
+  ('poya',       '寶雅採購券',     1800, true,  8),
+  ('blindbox',   '盲盒命運券',     800,  true,  9),
+  ('restaurant', '指定餐廳享用券', 3000, true,  10)
+on conflict do nothing;
+
 -- 卡片：全系統只有一筆
 create table if not exists app.card (
   id               int     primary key default 1 check (id = 1),
@@ -119,6 +141,7 @@ on conflict do nothing;
 -- 資料表全部啟用 RLS 且不開任何 policy：除了擁有者與 security definer 函式，沒有人讀得到
 alter table app.settings     enable row level security;
 alter table app.gifts        enable row level security;
+alter table app.vouchers     enable row level security;
 alter table app.card         enable row level security;
 alter table app.transactions enable row level security;
 
@@ -302,6 +325,47 @@ begin
   return app.state();
 end $$;
 
+-- 兌換券：扣點。鎖定、餘額不足、限一次都在這裡檢查；同一個 request_id 重送只會扣一次
+create or replace function public.card_redeem(p_token text, p_voucher_key text, p_request_id text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  v app.vouchers;
+begin
+  perform app.verify('card', p_token);
+  perform app.sync_anniv();
+  perform app.require_active();
+
+  if p_request_id is null or p_request_id = '' or char_length(p_request_id) > 64 then
+    perform app.fail('INVALID_INPUT');
+  end if;
+  if exists (select 1 from app.transactions where request_id = p_request_id) then
+    return app.state();
+  end if;
+
+  select * into v from app.vouchers where key = p_voucher_key;
+  if not found then
+    perform app.fail('INVALID_INPUT');
+  end if;
+  if (select locked from app.card where id = 1) then
+    perform app.fail('LOCKED');
+  end if;
+  -- 限一次的券：已兌換且沒有被沖銷，就不能再兌換
+  if v.once and exists (
+    select 1 from app.transactions t
+    where t.kind = 'redeem' and t.ref = v.key
+      and not exists (select 1 from app.transactions x where x.kind = 'void' and x.ref = t.id::text)
+  ) then
+    perform app.fail('ALREADY_CLAIMED');
+  end if;
+  if v.cost > app.balance() then
+    perform app.fail('INSUFFICIENT');
+  end if;
+
+  insert into app.transactions (kind, title, amount, ref, request_id)
+  values ('redeem', v.title, -v.cost, v.key, p_request_id);
+  return app.state();
+end $$;
+
 -- 兌換禮物：不扣額度，每項限一次
 create or replace function public.card_claim_gift(p_token text, p_gift_key text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -418,7 +482,7 @@ begin
   if not found then
     perform app.fail('NOT_FOUND');
   end if;
-  if tx.kind not in ('spend', 'topup', 'anniv') then
+  if tx.kind not in ('spend', 'topup', 'anniv', 'redeem') then
     perform app.fail('INVALID_INPUT');
   end if;
   if exists (select 1 from app.transactions where kind = 'void' and ref = tx.id::text) then
@@ -527,6 +591,7 @@ revoke all on function public.admin_state(text)                         from pub
 revoke all on function public.admin_topup(text, bigint, text, text)     from public;
 revoke all on function public.admin_void(text, text, text)              from public;
 revoke all on function public.admin_unlock(text)                        from public;
+revoke all on function public.card_redeem(text, text, text)             from public;
 
 grant execute on function public.card_state(text)                       to anon, authenticated;
 grant execute on function public.card_activate(text, jsonb)             to anon, authenticated;
@@ -538,3 +603,4 @@ grant execute on function public.admin_state(text)                      to anon,
 grant execute on function public.admin_topup(text, bigint, text, text)  to anon, authenticated;
 grant execute on function public.admin_void(text, text, text)           to anon, authenticated;
 grant execute on function public.admin_unlock(text)                     to anon, authenticated;
+grant execute on function public.card_redeem(text, text, text)          to anon, authenticated;
