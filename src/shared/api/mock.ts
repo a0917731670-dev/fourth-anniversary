@@ -1,5 +1,18 @@
-import { now } from '../domain/clock'
-import { uid } from '../domain/id'
+import { INITIAL_CREDIT, ANNIV_TOPUP, GIFTS, VOUCHERS, PROFILE_FIELDS } from '../domain/config'
+import {
+  activeRedeems,
+  annivMoment,
+  balanceOf,
+  claimedGifts,
+  checkGift,
+  checkRedeem,
+  checkSpend,
+  checkTopup,
+  checkVoid,
+  dueAnnivYears,
+  isVoidable,
+  voidedIds,
+} from '../domain/rules'
 import { INITIAL_CREDIT, ANNIV_TOPUP, GIFTS, PROFILE_FIELDS } from '../domain/config'
 import {
   annivMoment,
@@ -149,6 +162,17 @@ export function createMockCardApi(token: string | null): CardApi {
         add(db, 'gift', gift ? gift.title : giftKey, 0, { ref: giftKey })
       }),
 
+    redeem: ({ voucherKey, requestId }) =>
+      run('card', token, (db) => {
+        requireActive(db)
+        if (db.requests.includes(requestId)) return // 重送：已經處理過
+        const err = checkRedeem(voucherKey, balanceOf(db.txs), activeRedeems(db.txs), db.card.locked)
+        if (err) throw new ApiError(err)
+        const v = VOUCHERS.find((x) => x.key === voucherKey)!
+        add(db, 'redeem', v.title, -v.cost, { ref: voucherKey })
+        db.requests.push(requestId)
+      }),
+    
     setLock: (locked) =>
       run('card', token, (db) => {
         requireActive(db)
