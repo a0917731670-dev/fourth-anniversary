@@ -1,3 +1,5 @@
+import { now } from '../domain/clock'
+import { uid } from '../domain/id'
 import { INITIAL_CREDIT, ANNIV_TOPUP, GIFTS, VOUCHERS, PROFILE_FIELDS } from '../domain/config'
 import {
   activeRedeems,
@@ -6,19 +8,6 @@ import {
   claimedGifts,
   checkGift,
   checkRedeem,
-  checkSpend,
-  checkTopup,
-  checkVoid,
-  dueAnnivYears,
-  isVoidable,
-  voidedIds,
-} from '../domain/rules'
-import { INITIAL_CREDIT, ANNIV_TOPUP, GIFTS, PROFILE_FIELDS } from '../domain/config'
-import {
-  annivMoment,
-  balanceOf,
-  claimedGifts,
-  checkGift,
   checkSpend,
   checkTopup,
   checkVoid,
@@ -172,7 +161,7 @@ export function createMockCardApi(token: string | null): CardApi {
         add(db, 'redeem', v.title, -v.cost, { ref: voucherKey })
         db.requests.push(requestId)
       }),
-    
+
     setLock: (locked) =>
       run('card', token, (db) => {
         requireActive(db)
