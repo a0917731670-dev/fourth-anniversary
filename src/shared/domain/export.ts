@@ -2,7 +2,7 @@ import { fullDateTime } from './format'
 import { buildRows } from './rules'
 import type { Tx } from './types'
 
-const KIND_LABEL = { initial: '初始額度', spend: '消費', topup: '儲值', anniv: '紀念日加值', gift: '禮物兌換', void: '沖銷' } as const
+const KIND_LABEL = { initial: '初始額度', spend: '消費', topup: '儲值', anniv: '紀念日加值', gift: '禮物兌換', redeem: '兌換券', void: '沖銷' } as const
 
 const cell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
 
