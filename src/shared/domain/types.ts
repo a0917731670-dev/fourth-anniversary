@@ -4,7 +4,7 @@ import type { ProfileKey } from './config'
  * 流水帳種類：
  *  initial 開卡初始額度　spend 消費　topup 後台儲值　anniv 紀念日自動加值　gift 兌換禮物（金額 0，ref 是禮物代碼）　void 沖銷（金額為被沖銷那筆的相反數）
  */
-export type TxKind = 'initial' | 'spend' | 'topup' | 'anniv' | 'gift' | 'void'
+export type TxKind = 'initial' | 'spend' | 'topup' | 'anniv' | 'gift' | 'void' | 'redeem'
 
 export interface Tx {
   id: string
