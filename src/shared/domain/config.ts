@@ -90,3 +90,25 @@ export const GIFTS: Gift[] = [
   { key: 'anniv4-gift', icon: 'gift', title: '四週年禮物', desc: '四週年專屬驚喜禮物，拆開那天揭曉' },
   { key: 'anniv4-letter', icon: 'pen', title: '四週年手寫卡片', desc: '親手寫下四年來最想對妳說的話' },
 ]
+
+// 兌換券：扣點。once = true 表示限兌換一次（key、title、cost、once 要和資料庫 app.vouchers 一致）
+export interface Voucher {
+  key: string
+  title: string
+  desc: string
+  cost: number
+  once: boolean
+}
+
+export const VOUCHERS: Voucher[] = [
+  { key: 'dessert', title: '手工甜點券', desc: '親手做一份妳想吃的甜點', cost: 200, once: false },
+  { key: 'massage', title: '15分鐘按摩券', desc: '肩頸放鬆 15 分鐘', cost: 200, once: false },
+  { key: 'blowdry', title: '吹頭髮服務券', desc: '洗完澡由我來吹頭髮', cost: 200, once: false },
+  { key: 'shampoo', title: '洗頭服務券', desc: '幫妳洗頭，順便按摩頭皮', cost: 200, once: false },
+  { key: 'date', title: '一日約會驚喜券', desc: '全程由我安排一日約會行程', cost: 1200, once: true },
+  { key: 'wish', title: '願望兌換券', desc: '許一個願望，我來幫妳實現', cost: 2000, once: true },
+  { key: 'outfit', title: '治裝券', desc: '1000塊以內，要買要快', cost: 1200, once: true },
+  { key: 'poya', title: '寶雅採購券', desc: '限時兩分鐘在寶雅盡情採購', cost: 1800, once: true },
+  { key: 'blindbox', title: '盲盒命運券', desc: '抽一個命運盲盒，開了才知道', cost: 800, once: true },
+  { key: 'restaurant', title: '指定餐廳享用券', desc: '指定一間餐廳，我請你吃', cost: 3000, once: true },
+]
