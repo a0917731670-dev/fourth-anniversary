@@ -1,0 +1,26 @@
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # 每天 UTC 03:17（台北時間 11:17）
+  workflow_dispatch: # 也可以手動執行
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          code=$(curl -s -o /tmp/out -w '%{http_code}' --max-time 30 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/card_state" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_token":"keepalive"}')
+          echo "HTTP $code"
+          cat /tmp/out
+          # 400（通行碼無效）是預期結果：代表資料庫有收到並執行函式。
+          # 只有連不上或伺服器錯誤才算失敗。
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then exit 1; fi
